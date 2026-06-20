@@ -71,6 +71,16 @@ def carregar_dados():
 
 df_internos, df_externos = carregar_dados()
 
+df_internos["SECRETARIA_DE_LOTACAO"] = (
+    df_internos["SECRETARIA_DE_LOTACAO"]
+    .str.strip()
+)
+
+df_externos["SECRETARIA_DE_LOTACAO"] = (
+    df_externos["SECRETARIA_DE_LOTACAO"]
+    .str.strip()
+)
+
 # =====================================================
 # FILTROS
 # =====================================================
@@ -79,6 +89,39 @@ tipo = st.sidebar.radio(
     "Tipo de Capacitação",
     ["Internos", "Externos"]
 )
+
+with st.sidebar.expander("📱 Como utilizar o Dashboard"):
+
+    st.markdown("""
+### Navegação
+
+🔹 Selecione **Internos** ou **Externos**.
+
+🔹 Utilize os filtros de:
+- Ano
+- Secretaria
+- Modalidade
+- Tipo de Indicador
+
+🔹 Todos os gráficos são atualizados automaticamente.
+
+### Celular
+
+📱 Em dispositivos móveis:
+
+- Toque uma vez no gráfico para ativar a interação.
+- Arraste para navegar pelo gráfico.
+- Utilize dois dedos para zoom.
+- Toque duas vezes fora do gráfico para retornar à navegação da página.
+
+### Dicas
+
+📊 Passe o dedo sobre os gráficos para visualizar valores.
+
+📈 Utilize os filtros para comparar indicadores.
+
+📋 Consulte a tabela de detalhamento ao final da página.
+""")
 
 if tipo == "Internos":
     df_base = df_internos.copy()
@@ -250,7 +293,8 @@ with col1:
 
    st.plotly_chart(
     fig,
-    use_container_width=True
+    use_container_width=True,
+    config={"scrollZoom": False}
     )
 
 with col2:
@@ -273,7 +317,8 @@ with col2:
 
     st.plotly_chart(
         fig,
-        use_container_width=True
+        use_container_width=True,
+        config={"scrollZoom": False}
     )
 
 # =====================================================
@@ -305,7 +350,8 @@ with col1:
 
     st.plotly_chart(
         fig,
-        use_container_width=True
+        use_container_width=True,
+        config={"scrollZoom": False}
     )
 
 with col2:
@@ -329,7 +375,8 @@ with col2:
 
     st.plotly_chart(
         fig,
-        use_container_width=True
+        use_container_width=True,
+        config={"scrollZoom": False}
     )
 
 # =====================================================
@@ -375,7 +422,8 @@ with col2:
 
     st.plotly_chart(
         fig,
-        use_container_width=True
+        use_container_width=True,
+        config={"scrollZoom": False}
     )
 
 
@@ -440,7 +488,8 @@ with col1:
 
         st.plotly_chart(
             fig,
-            use_container_width=True
+            use_container_width=True,
+            config={"scrollZoom": False}
         )        
 
 with col2:
@@ -469,5 +518,64 @@ with col2:
 
    st.plotly_chart(
        fig,
-       use_container_width=True
+       use_container_width=True,
+       config={"scrollZoom": False}
+)
+
+
+# =====================================================
+# TABELA
+# =====================================================
+
+tabela_resumo = (
+    df_filtro
+    .groupby("SECRETARIA_DE_LOTACAO")
+    .agg(
+        Participantes=("SIAPE", "nunique"),
+        Acoes=("ACAO_DE_DESENVOLVIMENTO", "count"),
+        Valor_Empenhado=("VALOR_EMPENHADO", "sum"),
+        Carga_Horaria_Media=("CARGA_HORARIA", "mean")
+    )
+    .reset_index()
+)
+
+tabela_resumo["Custo_Hora"] = (
+    tabela_resumo["Valor_Empenhado"] /
+    tabela_resumo["Carga_Horaria_Media"]
+)
+
+tabela_resumo["Valor_Por_Participante"] = (
+    tabela_resumo["Valor_Empenhado"] /
+    tabela_resumo["Participantes"]
+)
+
+
+tabela_exibicao = tabela_resumo.copy()
+
+tabela_exibicao["Valor_Empenhado"] = (
+    tabela_exibicao["Valor_Empenhado"]
+    .map(lambda x: f"R$ {x:,.2f}")
+)
+
+tabela_exibicao["Custo_Hora"] = (
+    tabela_exibicao["Custo_Hora"]
+    .map(lambda x: f"R$ {x:,.2f}")
+)
+
+tabela_exibicao["Valor_Por_Participante"] = (
+    tabela_exibicao["Valor_Por_Participante"]
+    .map(lambda x: f"R$ {x:,.2f}")
+)
+
+tabela_exibicao["Carga_Horaria_Media"] = (
+    tabela_exibicao["Carga_Horaria_Media"]
+    .round(1)
+)
+
+st.subheader("📋 Indicadores por Secretaria")
+
+st.dataframe(
+    tabela_exibicao,
+    use_container_width=True,
+    hide_index=True
 )
