@@ -8,10 +8,9 @@ Created on Sat Jun 13 10:38:15 2026
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import numpy as np
 
-from matplotlib.ticker import FuncFormatter
 
 # =====================================================
 # CONFIGURAÇÃO
@@ -298,28 +297,61 @@ with col1:
     )
 
 with col2:
+    st.markdown("##### 🏛️ Análise por Secretaria")
 
-    participantes_secretaria = (
-        df_filtro
-        .groupby("SECRETARIA_DE_LOTACAO")["SIAPE"]
-        .nunique()
-        .reset_index()
-        .sort_values("SIAPE")
+    opcao_secretaria = st.segmented_control(
+        label="Indicador",
+        options=["👥 Participantes", "💰 Valor Empenhado"],
+        default="👥 Participantes",
+        key="indicador_secretaria"
+    )
+    if opcao_secretaria == "👥 Participantes":
+
+        df_secretaria = (
+            df_filtro
+            .groupby("SECRETARIA_DE_LOTACAO")["SIAPE"]
+            .nunique()
+            .reset_index(name="Participantes")
+            .sort_values("Participantes")
     )
 
-    fig = px.bar(
-        participantes_secretaria,
-        x="SIAPE",
-        y="SECRETARIA_DE_LOTACAO",
-        orientation="h",
-        title="Participantes por Secretaria"
+        fig = px.bar(
+            df_secretaria,
+            x="Participantes",
+            y= 'SECRETARIA_DE_LOTACAO',
+            orientation="h",
+            text_auto=True,
+            color="Participantes",
+            color_continuous_scale="Blues"
     )
+    else:
+        df_secretaria = (
+            df_filtro
+            .groupby("SECRETARIA_DE_LOTACAO")["VALOR_EMPENHADO"]
+            .sum()
+            .reset_index()
+            .sort_values("VALOR_EMPENHADO")
+            )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        config={"scrollZoom": False}
-    )
+        fig = px.bar(
+            df_secretaria,
+            x="VALOR_EMPENHADO",
+            y="SECRETARIA_DE_LOTACAO",
+            orientation="h",
+            text_auto=".2s",
+            color="VALOR_EMPENHADO",
+            color_continuous_scale="Greens"
+            )
+
+    fig.update_layout(
+        height=450,
+        margin=dict(l=10, r=10, t=30, b=10),
+        coloraxis_showscale=False
+        )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
 
 # =====================================================
 # LINHA 2
@@ -345,43 +377,23 @@ with col1:
         x="QTD",
         y="TIPO_DE_ACAO",
         orientation="h",
-        title="Ações por Tipo"
+        title="Ações por Tipo",
+        color="QTD",
+        color_continuous_scale="Blues"
     )
+    
+    fig.update_layout(
+        height=450,
+        margin=dict(l=10, r=10, t=30, b=10),
+        coloraxis_showscale=False
+        )
+    
 
     st.plotly_chart(
         fig,
         use_container_width=True,
         config={"scrollZoom": False}
     )
-
-with col2:
-
-    custo_secretaria = (
-        df_filtro
-        .groupby("SECRETARIA_DE_LOTACAO")
-        ["VALOR_EMPENHADO"]
-        .sum()
-        .reset_index()
-        .sort_values("VALOR_EMPENHADO")
-    )
-
-    fig = px.bar(
-        custo_secretaria,
-        x="VALOR_EMPENHADO",
-        y="SECRETARIA_DE_LOTACAO",
-        orientation="h",
-        title="Valor Empenhado por Secretaria"
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        config={"scrollZoom": False}
-    )
-
-# =====================================================
-# LINHA 3
-# =====================================================
 
 metricas = (
     df_filtro
@@ -393,59 +405,114 @@ metricas = (
     .reset_index()
 )
 
-col1, col2 = st.columns(2)
-
-with col1:
-
+with col2:
     fig = px.bar(
         metricas.sort_values("CARGA_HORARIA"),
         x="CARGA_HORARIA",
         y="SECRETARIA_DE_LOTACAO",
         orientation="h",
-        title="Carga Horária Média"
+        title="Carga Horária Média",
+        color="CARGA_HORARIA",
+        color_continuous_scale="Blues"
     )
-
+    
+    fig.update_layout(
+        height=450,
+        margin=dict(l=10, r=10, t=30, b=10),
+        coloraxis_showscale=False
+        )
+    
     st.plotly_chart(
         fig,
         use_container_width=True
     )
+    
+# =====================================================
+# LINHA 3
+# =====================================================
 
-with col2:
 
+col1, col2 = st.columns(2)
+
+with col1:
     fig = px.bar(
         metricas.sort_values("VALOR_PAGO_POR_ALUNO"),
         x="VALOR_PAGO_POR_ALUNO",
         y="SECRETARIA_DE_LOTACAO",
         orientation="h",
-        title="Valor Médio por Aluno"
+        title="Valor Médio por Aluno",
+        color="VALOR_PAGO_POR_ALUNO",
+        color_continuous_scale="Blues"
     )
+    
+    fig.update_layout(
+        height=450,
+        margin=dict(l=10, r=10, t=30, b=10),
+        coloraxis_showscale=False
+        )
 
     st.plotly_chart(
         fig,
         use_container_width=True,
         config={"scrollZoom": False}
     )
+    
 
+with col2:
+   custo_hora = (
+    df_filtro
+    .groupby("SECRETARIA_DE_LOTACAO")["CUSTO_HORA"]
+    .mean()
+    .reset_index()
+    .sort_values("CUSTO_HORA", ascending=True)
+    )
+
+   fig = px.bar(
+       custo_hora,
+       x="CUSTO_HORA",
+       y="SECRETARIA_DE_LOTACAO",
+       orientation="h",
+       title="Custo Hora por participantes por Secretaria",
+       text_auto=".2f",
+       color="CUSTO_HORA",
+       color_continuous_scale="Blues"
+     )
+   
+   fig.update_layout(
+        height=450,
+        margin=dict(l=10, r=10, t=30, b=10),
+        coloraxis_showscale=False
+        )
+
+   fig.update_layout(
+    xaxis_title="R$/Hora",
+    yaxis_title=""
+)
+
+   st.plotly_chart(
+       fig,
+       use_container_width=True,
+       config={"scrollZoom": False}
+)
 
 # =====================================================
 # LINHA 4
 # =====================================================
 
-st.subheader("Análise por Tipo de Ação")
-
-indicador_tipo = st.radio(
-    "",
-    [
-        "Valor Empenhado por Tipo de Ação",
-        "Participantes por Tipo de Ação"
-    ],
-    horizontal=True
-)
-
 col1, col2 = st.columns(2)
 
 with col1:
 
+    st.subheader("Análise por Tipo de Ação")
+
+    indicador_tipo = st.radio(
+        "",
+        [
+            "Valor Empenhado por Tipo de Ação",
+            "Participantes por Tipo de Ação"
+        ],
+        horizontal=True
+    )
     if indicador_tipo == "Valor Empenhado por Tipo de Ação":
 
         dados = pd.pivot_table(
@@ -463,6 +530,12 @@ with col1:
             orientation="h",
             title="Valor Empenhado por Tipo de Ação e Secretaria"
         )
+        
+        fig.update_layout(
+             height=450,
+             margin=dict(l=10, r=10, t=30, b=10),
+             coloraxis_showscale=False
+             )
 
         st.plotly_chart(
             fig,
@@ -485,6 +558,12 @@ with col1:
             orientation="h",
             title="Participantes por Tipo de Ação e Secretaria"
         )
+        
+        fig.update_layout(
+             height=450,
+             margin=dict(l=10, r=10, t=30, b=10),
+             coloraxis_showscale=False
+             )
 
         st.plotly_chart(
             fig,
@@ -493,35 +572,99 @@ with col1:
         )        
 
 with col2:
+    st.subheader("Evolução Mensal dos Valores")
 
-   custo_hora = (
-    df_filtro
-    .groupby("SECRETARIA_DE_LOTACAO")["CUSTO_HORA"]
-    .mean()
-    .reset_index()
-    .sort_values("CUSTO_HORA", ascending=True)
-    )
 
-   fig = px.bar(
-       custo_hora,
-       x="CUSTO_HORA",
-       y="SECRETARIA_DE_LOTACAO",
-       orientation="h",
-       title="Custo Hora por Secretaria",
-       text_auto=".2f"
-     )
+    df_filtro["MES_EMPENHO"] = (
+        df_filtro["MES_EMPENHO"].astype(str).str.strip().str.upper()
+        )
+    df_filtro["MES_PAGAMENTO"] = (
+        df_filtro["MES_PAGAMENTO"].astype(str).str.strip().str.upper()
+        )
 
-   fig.update_layout(
-    xaxis_title="R$/Hora",
-    yaxis_title=""
-)
+    mapa_meses = {
+        "JANEIRO": "JAN",
+        "FEVEREIRO": "FEV",
+        "MARÇO": "MAR",
+        "ABRIL": "ABR",
+        "MAIO": "MAI",
+        "JUNHO": "JUN",
+        "JULHO": "JUL",
+        "AGOSTO": "AGO",
+        "SETEMBRO": "SET",
+        "OUTUBRO": "OUT",
+        "NOVEMBRO": "NOV",
+        "DEZEMBRO": "DEZ",
+        }
 
-   st.plotly_chart(
-       fig,
-       use_container_width=True,
-       config={"scrollZoom": False}
-)
+    ordem_meses = [
+        "JAN",
+        "FEV",
+        "MAR",
+        "ABR",
+        "MAI",
+        "JUN",
+        "JUL",
+        "AGO",
+        "SET",
+        "OUT",
+        "NOV",
+        "DEZ",
+        ]
 
+    df_filtro["MES_EMPENHO_SIGLA"] = df_filtro["MES_EMPENHO"].map(mapa_meses)
+    df_filtro["MES_PAGAMENTO_SIGLA"] = df_filtro["MES_PAGAMENTO"].map(mapa_meses)
+
+    empenho = (
+        df_filtro.groupby("MES_EMPENHO_SIGLA")["VALOR_EMPENHADO"]
+        .sum()
+        .reindex(ordem_meses, fill_value=0)
+        )
+
+    pagamento = (
+        df_filtro.groupby("MES_PAGAMENTO_SIGLA")["VALOR_EMPENHADO"]
+        .sum()
+        .reindex(ordem_meses, fill_value=0)
+        )   
+
+    grafico_mensal = pd.DataFrame(
+        {"Mês": ordem_meses, "Empenhado": empenho.values, "Pago": pagamento.values}
+        )
+
+
+    fig_mensal = go.Figure()
+
+    fig_mensal.add_bar(
+        x=grafico_mensal["Mês"],
+        y=grafico_mensal["Empenhado"],
+        name="Empenhado",
+        marker_color="#2b7bba",
+        )
+
+    fig_mensal.add_trace(
+        go.Scatter(
+            x=grafico_mensal["Mês"],
+            y=grafico_mensal["Pago"],
+            mode="lines+markers",
+            name="Pago",
+            line=dict(color="#2ca02c", width=3),
+            marker=dict(size=8),
+            )
+        )
+
+    fig_mensal.update_layout(
+        title="Evolução Mensal do Valor Empenhado x Pago (Anos Selecionados)",
+        yaxis_title="Valor (R$)",
+        hovermode="x unified",
+        barmode="group",
+        height=450,
+        )
+
+    fig_mensal.update_yaxes(tickprefix="R$ ", tickformat=",.0f")
+
+    st.plotly_chart(
+        fig_mensal, use_container_width=True, config={"scrollZoom": False}
+        ) 
 
 # =====================================================
 # TABELA
