@@ -485,7 +485,7 @@ with col2:
        x="CUSTO_HORA",
        y="SECRETARIA_DE_LOTACAO",
        orientation="h",
-       title="Custo Hora por participantes por Secretaria",
+       title="Custo Hora por Secretaria",
        text_auto=".2f",
        color="CUSTO_HORA",
        color_continuous_scale="Blues"
