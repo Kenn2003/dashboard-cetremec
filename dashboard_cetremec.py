@@ -687,7 +687,6 @@ tabela_resumo = (
     df_financeiro
     .groupby("SECRETARIA_DE_LOTACAO")
     .agg(
-        Participantes=("SIAPE", "nunique"),
         Acoes=("ACAO_DE_DESENVOLVIMENTO", "count"),
         Valor_Empenhado=("VALOR_EMPENHADO", "sum"),
         Carga_Horaria_Media=("CARGA_HORARIA", "mean")
@@ -718,8 +717,8 @@ tabela_exibicao["Custo_Hora"] = (
     .map(lambda x: f"R$ {x:,.2f}")
 )
 
-tabela_exibicao["Valor_Por_Participante"] = (
-    tabela_exibicao["Valor_Por_Participante"]
+tabela_exibicao["Valor_Por_Acao"] = (
+    tabela_exibicao["Valor_Por_Acao"]
     .map(lambda x: f"R$ {x:,.2f}")
 )
 
