@@ -735,6 +735,7 @@ tabela_resumo = (
     df_financeiro
     .groupby("SECRETARIA_DE_LOTACAO")
     .agg(
+        Participantes=("SIAPE", "count"),
         Acoes=("ACAO_DE_DESENVOLVIMENTO", "count"),
         Valor_Empenhado=("VALOR_EMPENHADO", "sum"),
         Valor_Aluno = ('VALOR_PAGO_POR_ALUNO', "mean"),
