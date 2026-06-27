@@ -158,9 +158,24 @@ if modalidade:
 
 df_financeiro = (
     df_filtro
-    .drop_duplicates(subset="NOTA_DE_EMPENHO_CREDITO", keep="first")
+    .drop_duplicates(subset=[
+            "NOTA_DE_EMPENHO_CREDITO",
+            "VALOR_EMPENHADO"
+        ],
+        keep="first")
 )
 
+df_carga = (
+    df_filtro
+    .drop_duplicates(
+        subset=[
+            "ACAO_DE_DESENVOLVIMENTO",
+            "TIPO_DE_ACAO",
+            "SECRETARIA_DE_LOTACAO",
+            "CARGA_HORARIA"
+        ]
+    )
+)
 
 # =====================================================
 # KPIs
@@ -172,9 +187,9 @@ total_participantes = df_filtro["SIAPE"].nunique()
 
 valor_total = df_financeiro["VALOR_EMPENHADO"].sum()
 
-carga_media = df_filtro["CARGA_HORARIA"].mean()
+carga_media = df_carga["CARGA_HORARIA"].mean()
 
-valor_aluno = df_financeiro["VALOR_PAGO_POR_ALUNO"].mean()
+valor_aluno = df_filtro["VALOR_PAGO_POR_ALUNO"].mean()
 
 c1, c2, c3, c4, c5 = st.columns(5)
 
@@ -384,6 +399,7 @@ with col1:
         y="TIPO_DE_ACAO",
         orientation="h",
         title="Ações por Tipo",
+        text_auto=".2f",
         color="QTD",
         color_continuous_scale="Blues"
     )
@@ -402,7 +418,7 @@ with col1:
     )
 
 metricas = (
-    df_financeiro
+    df_carga
     .groupby("SECRETARIA_DE_LOTACAO")
     .agg({
         "CARGA_HORARIA":"mean",
@@ -418,6 +434,7 @@ with col2:
         y="SECRETARIA_DE_LOTACAO",
         orientation="h",
         title="Carga Horária Média",
+        text_auto=".2f",
         color="CARGA_HORARIA",
         color_continuous_scale="Blues"
     )
@@ -447,6 +464,7 @@ with col1:
         y="SECRETARIA_DE_LOTACAO",
         orientation="h",
         title="Valor Médio por Aluno",
+        text_auto=".2f",
         color="VALOR_PAGO_POR_ALUNO",
         color_continuous_scale="Blues"
     )
@@ -464,16 +482,16 @@ with col1:
     )
     
 
-df_financeiro['CUSTO_HORA'] = np.where(
-    df_financeiro['CARGA_HORARIA'] > 0,
-    df_financeiro['VALOR_EMPENHADO'] / df_financeiro['CARGA_HORARIA'],
+df_carga['CUSTO_HORA'] = np.where(
+    df_carga['CARGA_HORARIA'] > 0,
+    df_carga["VALOR_PAGO_POR_ALUNO"] / df_carga['CARGA_HORARIA'],
     np.nan
 )
 
 
 with col2:
    custo_hora = (
-    df_financeiro
+    df_carga
     .groupby("SECRETARIA_DE_LOTACAO")["CUSTO_HORA"]
     .mean()
     .reset_index()
@@ -485,7 +503,7 @@ with col2:
        x="CUSTO_HORA",
        y="SECRETARIA_DE_LOTACAO",
        orientation="h",
-       title="Custo Hora por Secretaria",
+       title="Custo Hora por participantes por Secretaria",
        text_auto=".2f",
        color="CUSTO_HORA",
        color_continuous_scale="Blues"
@@ -512,6 +530,7 @@ with col2:
 # LINHA 4
 # =====================================================
 
+
 col1, col2 = st.columns(2)
 
 with col1:
@@ -522,7 +541,8 @@ with col1:
         "",
         [
             "Valor Empenhado por Tipo de Ação",
-            "Participantes por Tipo de Ação"
+            "Participantes por Tipo de Ação",
+            "Carga Horária por Tipo de Ação"
         ],
         horizontal=True
     )
@@ -555,7 +575,7 @@ with col1:
             use_container_width=True
         )
         
-    else:
+    elif indicador_tipo == "Participantes por Tipo de Ação":
         dados = pd.pivot_table(
             df_filtro,
             values="SIAPE",
@@ -582,7 +602,35 @@ with col1:
             fig,
             use_container_width=True,
             config={"scrollZoom": False}
-        )        
+        )    
+    elif indicador_tipo == "Carga Horária por Tipo de Ação":
+
+        dados = pd.pivot_table(
+            df_carga,
+            values="CARGA_HORARIA",
+            index="SECRETARIA_DE_LOTACAO",
+            columns="TIPO_DE_ACAO",
+            aggfunc="mean"
+            ).fillna(0)
+
+        fig = px.bar(
+            dados.reset_index(),
+            y="SECRETARIA_DE_LOTACAO",
+            x=dados.columns,
+            orientation="h",
+            title="Carga Horária por Tipo de Ação e Secretaria"
+            )   
+
+        fig.update_layout(
+            height=450,
+            margin=dict(l=10, r=10, t=30, b=10)
+            )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={"scrollZoom": False}
+            )
 
 with col2:
     st.subheader("Evolução Mensal dos Valores")
@@ -684,9 +732,10 @@ with col2:
 # =====================================================
 
 tabela_resumo = (
-    df_financeiro
+    df_filtro
     .groupby("SECRETARIA_DE_LOTACAO")
     .agg(
+        Participantes=("SIAPE", "nunique"),
         Acoes=("ACAO_DE_DESENVOLVIMENTO", "count"),
         Valor_Empenhado=("VALOR_EMPENHADO", "sum"),
         Carga_Horaria_Media=("CARGA_HORARIA", "mean")
@@ -699,9 +748,9 @@ tabela_resumo["Custo_Hora"] = (
     tabela_resumo["Carga_Horaria_Media"]
 )
 
-tabela_resumo["Valor_Por_Acao"] = (
+tabela_resumo["Valor_Por_Participante"] = (
     tabela_resumo["Valor_Empenhado"] /
-    tabela_resumo["Acoes"]
+    tabela_resumo["Participantes"]
 )
 
 
@@ -717,8 +766,8 @@ tabela_exibicao["Custo_Hora"] = (
     .map(lambda x: f"R$ {x:,.2f}")
 )
 
-tabela_exibicao["Valor_Por_Acao"] = (
-    tabela_exibicao["Valor_Por_Acao"]
+tabela_exibicao["Valor_Por_Participante"] = (
+    tabela_exibicao["Valor_Por_Participante"]
     .map(lambda x: f"R$ {x:,.2f}")
 )
 
