@@ -732,7 +732,7 @@ with col2:
 # =====================================================
 
 tabela_resumo = (
-    df_filtro
+    df_financeiro
     .groupby("SECRETARIA_DE_LOTACAO")
     .agg(
         Participantes=("SIAPE", "nunique"),
