@@ -687,7 +687,6 @@ tabela_resumo = (
     df_financeiro
     .groupby("SECRETARIA_DE_LOTACAO")
     .agg(
-        Participantes=("SIAPE", "nunique"),
         Acoes=("ACAO_DE_DESENVOLVIMENTO", "count"),
         Valor_Empenhado=("VALOR_EMPENHADO", "sum"),
         Carga_Horaria_Media=("CARGA_HORARIA", "mean")
@@ -700,9 +699,9 @@ tabela_resumo["Custo_Hora"] = (
     tabela_resumo["Carga_Horaria_Media"]
 )
 
-tabela_resumo["Valor_Por_Participante"] = (
+tabela_resumo["Valor_Por_Acao"] = (
     tabela_resumo["Valor_Empenhado"] /
-    tabela_resumo["Participantes"]
+    tabela_resumo["Acoes"]
 )
 
 
