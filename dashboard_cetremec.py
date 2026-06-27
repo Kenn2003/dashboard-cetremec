@@ -155,15 +155,72 @@ if modalidade:
         df_filtro["MODALIDADE"].isin(modalidade)
     ]
     
+mapa_meses = {
+    "JANEIRO": "JAN", "FEVEREIRO": "FEV", "MARÇO": "MAR", "ABRIL": "ABR",
+    "MAIO": "MAI", "JUNHO": "JUN", "JULHO": "JUL", "AGOSTO": "AGO",
+    "SETEMBRO": "SET", "OUTUBRO": "OUT", "NOVEMBRO": "NOV", "DEZEMBRO": "DEZ"
+}
+ordem_meses = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"]
+
+if "MES_EMPENHO" in df_filtro.columns:
+    df_filtro["MES_EMPENHO_SIGLA"] = df_filtro["MES_EMPENHO"].astype(str).str.strip().str.upper().map(mapa_meses)
+if "MES_PAGAMENTO" in df_filtro.columns:
+    df_filtro["MES_PAGAMENTO_SIGLA"] = df_filtro["MES_PAGAMENTO"].astype(str).str.strip().str.upper().map(mapa_meses)
+
+rateio = (
+    df_filtro
+    .groupby("NOTA_DE_EMPENHO_CREDITO")
+    ["SECRETARIA_DE_LOTACAO"]
+    .nunique()
+    .reset_index(name="QTD_SECRETARIAS")
+)
 
 df_financeiro = (
     df_filtro
-    .drop_duplicates(subset=[
+    .drop_duplicates(
+        subset=[
             "NOTA_DE_EMPENHO_CREDITO",
-            "VALOR_EMPENHADO"
-        ],
-        keep="first")
+            "VALOR_EMPENHADO",
+            ],
+        keep="first"
+    )
 )
+
+df_financeiro = df_financeiro.merge(
+    rateio,
+    on="NOTA_DE_EMPENHO_CREDITO",
+    how="left"
+)
+
+df_financeiro["VALOR_RATEADO"] = (
+    df_financeiro["VALOR_EMPENHADO"]
+    /
+    df_financeiro["QTD_SECRETARIAS"]
+)
+
+df_secretaria_valor = (
+    df_filtro[
+        [
+        "NOTA_DE_EMPENHO_CREDITO",
+        "SECRETARIA_DE_LOTACAO",
+        "TIPO_DE_ACAO",
+        "MES_EMPENHO_SIGLA",      # Incluído aqui para herança voluntária
+        "MES_PAGAMENTO_SIGLA"     # Incluído aqui para herança voluntária
+        ]
+    ]
+    .drop_duplicates()
+    .merge(
+        df_financeiro[
+            [
+            "NOTA_DE_EMPENHO_CREDITO",
+            "VALOR_RATEADO"
+            ]
+        ],
+        on="NOTA_DE_EMPENHO_CREDITO",
+        how="left"
+    )
+)
+
 
 df_carga = (
     df_filtro
@@ -347,20 +404,20 @@ with col2:
     )
     else:
         df_secretaria = (
-            df_financeiro
-            .groupby("SECRETARIA_DE_LOTACAO")["VALOR_EMPENHADO"]
+            df_secretaria_valor
+            .groupby("SECRETARIA_DE_LOTACAO")["VALOR_RATEADO"]
             .sum()
             .reset_index()
-            .sort_values("VALOR_EMPENHADO")
+            .sort_values("VALOR_RATEADO")
             )
 
         fig = px.bar(
             df_secretaria,
-            x="VALOR_EMPENHADO",
+            x="VALOR_RATEADO",
             y="SECRETARIA_DE_LOTACAO",
             orientation="h",
             text_auto=".2s",
-            color="VALOR_EMPENHADO",
+            color="VALOR_RATEADO",
             color_continuous_scale="Greens"
             )
 
@@ -549,8 +606,8 @@ with col1:
     if indicador_tipo == "Valor Empenhado por Tipo de Ação":
 
         dados = pd.pivot_table(
-            df_financeiro,
-            values="VALOR_EMPENHADO",
+            df_secretaria_valor,
+            values="VALOR_RATEADO",
             index="SECRETARIA_DE_LOTACAO",
             columns="TIPO_DE_ACAO",
             aggfunc="mean"
@@ -635,63 +692,21 @@ with col1:
 with col2:
     st.subheader("Evolução Mensal dos Valores")
 
-
-    df_filtro["MES_EMPENHO"] = (
-        df_filtro["MES_EMPENHO"].astype(str).str.strip().str.upper()
-        )
-    df_filtro["MES_PAGAMENTO"] = (
-        df_filtro["MES_PAGAMENTO"].astype(str).str.strip().str.upper()
-        )
-
-    mapa_meses = {
-        "JANEIRO": "JAN",
-        "FEVEREIRO": "FEV",
-        "MARÇO": "MAR",
-        "ABRIL": "ABR",
-        "MAIO": "MAI",
-        "JUNHO": "JUN",
-        "JULHO": "JUL",
-        "AGOSTO": "AGO",
-        "SETEMBRO": "SET",
-        "OUTUBRO": "OUT",
-        "NOVEMBRO": "NOV",
-        "DEZEMBRO": "DEZ",
-        }
-
-    ordem_meses = [
-        "JAN",
-        "FEV",
-        "MAR",
-        "ABR",
-        "MAI",
-        "JUN",
-        "JUL",
-        "AGO",
-        "SET",
-        "OUT",
-        "NOV",
-        "DEZ",
-        ]
-
-    df_financeiro["MES_EMPENHO_SIGLA"] = df_filtro["MES_EMPENHO"].map(mapa_meses)
-    df_financeiro["MES_PAGAMENTO_SIGLA"] = df_filtro["MES_PAGAMENTO"].map(mapa_meses)
-
     empenho = (
-        df_financeiro.groupby("MES_EMPENHO_SIGLA")["VALOR_EMPENHADO"]
+        df_secretaria_valor.groupby("MES_EMPENHO_SIGLA")["VALOR_RATEADO"]
         .sum()
         .reindex(ordem_meses, fill_value=0)
-        )
+    )
 
     pagamento = (
-        df_financeiro.groupby("MES_PAGAMENTO_SIGLA")["VALOR_EMPENHADO"]
+        df_secretaria_valor.groupby("MES_PAGAMENTO_SIGLA")["VALOR_RATEADO"]
         .sum()
         .reindex(ordem_meses, fill_value=0)
-        )   
+    )   
 
     grafico_mensal = pd.DataFrame(
         {"Mês": ordem_meses, "Empenhado": empenho.values, "Pago": pagamento.values}
-        )
-
+    )
 
     fig_mensal = go.Figure()
 
@@ -700,7 +715,7 @@ with col2:
         y=grafico_mensal["Empenhado"],
         name="Empenhado",
         marker_color="#2b7bba",
-        )
+    )
 
     fig_mensal.add_trace(
         go.Scatter(
@@ -710,8 +725,8 @@ with col2:
             name="Pago",
             line=dict(color="#2ca02c", width=3),
             marker=dict(size=8),
-            )
         )
+    )
 
     fig_mensal.update_layout(
         title="Evolução Mensal do Valor Empenhado x Pago (Anos Selecionados)",
@@ -719,63 +734,84 @@ with col2:
         hovermode="x unified",
         barmode="group",
         height=450,
-        )
+    )
 
     fig_mensal.update_yaxes(tickprefix="R$ ", tickformat="..0f")
 
     st.plotly_chart(
         fig_mensal, use_container_width=True, config={"scrollZoom": False}
-        ) 
+    )
 
 # =====================================================
-# TABELA
+# TABELA INDICADORES POR SECRETARIA
 # =====================================================
 
 tabela_resumo = (
-    df_financeiro
+    df_filtro
     .groupby("SECRETARIA_DE_LOTACAO")
     .agg(
-        Participantes=("SIAPE", "count"),
-        Acoes=("ACAO_DE_DESENVOLVIMENTO", "count"),
-        Valor_Empenhado=("VALOR_EMPENHADO", "sum"),
-        Valor_Aluno = ('VALOR_PAGO_POR_ALUNO', "mean"),
-        Carga_Horaria_Media=("CARGA_HORARIA", "mean")
+        Participantes=("SIAPE", "nunique"),
+        Acoes=("ACAO_DE_DESENVOLVIMENTO", "nunique"),
+        Valor_Aluno=("VALOR_PAGO_POR_ALUNO", "mean"),
     )
     .reset_index()
 )
 
-tabela_resumo["Custo_Hora"] = (
-    tabela_resumo["Valor_Empenhado"] /
-    tabela_resumo["Carga_Horaria_Media"]
+valor_secretaria = (
+    df_secretaria_valor
+    .groupby("SECRETARIA_DE_LOTACAO")
+    ["VALOR_RATEADO"]
+    .sum()
+    .reset_index(name="Valor_Empenhado")
 )
 
+valor_carga = (
+    df_carga
+    .groupby("SECRETARIA_DE_LOTACAO")
+    ["CARGA_HORARIA"]
+    .mean()
+    .reset_index(name="Carga_Horaria_Media")
+)
+
+
+tabela_resumo = tabela_resumo.merge(
+    valor_secretaria,
+    on="SECRETARIA_DE_LOTACAO",
+    how="left"
+)
+
+tabela_resumo = tabela_resumo.merge(
+    valor_carga,
+    on="SECRETARIA_DE_LOTACAO",
+    how="left"
+)
+
+
 tabela_resumo["Valor_Por_Participante"] = (
-    tabela_resumo["Valor_Aluno"] /
-    tabela_resumo["Acoes"]
+    tabela_resumo["Valor_Empenhado"] /
+    tabela_resumo["Participantes"]
 )
 
 
 tabela_exibicao = tabela_resumo.copy()
 
+
 tabela_exibicao["Valor_Empenhado"] = (
     tabela_exibicao["Valor_Empenhado"]
-    .map(lambda x: f"R$ {x:,.2f}")
-)
-
-tabela_exibicao["Custo_Hora"] = (
-    tabela_exibicao["Custo_Hora"]
-    .map(lambda x: f"R$ {x:,.2f}")
+    .map(lambda x: f"R$ {x:.2f}")
 )
 
 tabela_exibicao["Valor_Por_Participante"] = (
     tabela_exibicao["Valor_Por_Participante"]
-    .map(lambda x: f"R$ {x:,.2f}")
+    .map(lambda x: f"R$ {x:.2f}")
 )
+
 
 tabela_exibicao["Carga_Horaria_Media"] = (
     tabela_exibicao["Carga_Horaria_Media"]
     .round(1)
 )
+
 
 st.subheader("📋 Indicadores por Secretaria")
 
