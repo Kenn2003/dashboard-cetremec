@@ -737,7 +737,7 @@ tabela_resumo = (
     .agg(
         Acoes=("ACAO_DE_DESENVOLVIMENTO", "count"),
         Valor_Empenhado=("VALOR_EMPENHADO", "sum"),
-        Valor_Aluno = ('VALOR_PAGO_POR_ALUNO', "mean")
+        Valor_Aluno = ('VALOR_PAGO_POR_ALUNO', "mean"),
         Carga_Horaria_Media=("CARGA_HORARIA", "mean")
     )
     .reset_index()
