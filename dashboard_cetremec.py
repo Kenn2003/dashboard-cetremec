@@ -735,9 +735,9 @@ tabela_resumo = (
     df_financeiro
     .groupby("SECRETARIA_DE_LOTACAO")
     .agg(
-        Acoes=("ACAO_DE_DESENVOLVIMENTO", "mean"),
+        Acoes=("ACAO_DE_DESENVOLVIMENTO", "count"),
         Valor_Empenhado=("VALOR_EMPENHADO", "sum"),
-        Valor_Aluno = ('VALOR_PAGO_POR_ALUNO', "count")
+        Valor_Aluno = ('VALOR_PAGO_POR_ALUNO', "mean")
         Carga_Horaria_Media=("CARGA_HORARIA", "mean")
     )
     .reset_index()
