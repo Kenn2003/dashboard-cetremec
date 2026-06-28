@@ -801,6 +801,11 @@ tabela_exibicao["Valor_Empenhado"] = (
     .map(lambda x: f"R$ {x:.2f}")
 )
 
+tabela_exibicao["Valor_Aluno"] = (
+    tabela_exibicao["Valor_Aluno"]
+    .map(lambda x: f"R$ {x:.2f}")
+)
+
 tabela_exibicao["Valor_Por_Participante"] = (
     tabela_exibicao["Valor_Por_Participante"]
     .map(lambda x: f"R$ {x:.2f}")
