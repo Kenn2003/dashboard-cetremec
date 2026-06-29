@@ -117,6 +117,24 @@ else:
     df_base = df_externos.copy()
 st.title("📊 Dashboard CETREMEC")
 
+
+mapa_meses = {
+    "JANEIRO": "JAN", "FEVEREIRO": "FEV", "MARÇO": "MAR", "ABRIL": "ABR",
+    "MAIO": "MAI", "JUNHO": "JUN", "JULHO": "JUL", "AGOSTO": "AGO",
+    "SETEMBRO": "SET", "OUTUBRO": "OUT", "NOVEMBRO": "NOV", "DEZEMBRO": "DEZ"
+}
+ordem_meses = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"]
+
+if "MES_EMPENHO" in df_base.columns:
+    df_base["MES_EMPENHO_SIGLA"] = df_base["MES_EMPENHO"].astype(str).str.strip().str.upper().map(mapa_meses)
+if "MES_PAGAMENTO" in df_base.columns:
+    df_base["MES_PAGAMENTO_SIGLA"] = df_base["MES_PAGAMENTO"].astype(str).str.strip().str.upper().map(mapa_meses)
+
+
+# =====================================================
+# FILTROS
+# =====================================================
+
 col1, col2, col3 = st.columns(3)
 
 with col1:
@@ -140,86 +158,55 @@ with col3:
         default=[]
     )
 
-df_filtro = df_base.copy()
+# =====================================================
+# FINANCEIRO TOTAL (sem duplicar nota)
+# =====================================================
 
-if ano:
-    df_filtro = df_filtro[df_filtro["ANO_PDP"].isin(ano)]
-
-if secretaria:
-    df_filtro = df_filtro[
-        df_filtro["SECRETARIA_DE_LOTACAO"].isin(secretaria)
+df_financeiro_global = (
+    df_base[
+        [
+            "NOTA_DE_EMPENHO_CREDITO",
+            "VALOR_EMPENHADO",
+            "MODALIDADE",
+            "SECRETARIA_DE_LOTACAO",
+            "TIPO_DE_ACAO",
+            "MES_EMPENHO_SIGLA",
+            "MES_PAGAMENTO_SIGLA",
+            "ANO_PDP"
+        ]
     ]
-
-if modalidade:
-    df_filtro = df_filtro[
-        df_filtro["MODALIDADE"].isin(modalidade)
-    ]
-    
-mapa_meses = {
-    "JANEIRO": "JAN", "FEVEREIRO": "FEV", "MARÇO": "MAR", "ABRIL": "ABR",
-    "MAIO": "MAI", "JUNHO": "JUN", "JULHO": "JUL", "AGOSTO": "AGO",
-    "SETEMBRO": "SET", "OUTUBRO": "OUT", "NOVEMBRO": "NOV", "DEZEMBRO": "DEZ"
-}
-ordem_meses = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"]
-
-if "MES_EMPENHO" in df_filtro.columns:
-    df_filtro["MES_EMPENHO_SIGLA"] = df_filtro["MES_EMPENHO"].astype(str).str.strip().str.upper().map(mapa_meses)
-if "MES_PAGAMENTO" in df_filtro.columns:
-    df_filtro["MES_PAGAMENTO_SIGLA"] = df_filtro["MES_PAGAMENTO"].astype(str).str.strip().str.upper().map(mapa_meses)
-
-rateio = (
-    df_filtro
-    .groupby("NOTA_DE_EMPENHO_CREDITO")
-    ["SECRETARIA_DE_LOTACAO"]
-    .nunique()
-    .reset_index(name="QTD_SECRETARIAS")
-)
-
-df_financeiro = (
-    df_filtro
     .drop_duplicates(
         subset=[
             "NOTA_DE_EMPENHO_CREDITO",
-            "VALOR_EMPENHADO",
-            ],
+            "VALOR_EMPENHADO"
+        ],
         keep="first"
     )
 )
 
-df_financeiro = df_financeiro.merge(
-    rateio,
-    on="NOTA_DE_EMPENHO_CREDITO",
-    how="left"
+df_financeiro_global["NOTA_DE_EMPENHO_CREDITO"] = (
+    df_financeiro_global["NOTA_DE_EMPENHO_CREDITO"]
+    .astype(str)
+    .str.strip()
 )
 
-df_financeiro["VALOR_RATEADO"] = (
-    df_financeiro["VALOR_EMPENHADO"]
-    /
-    df_financeiro["QTD_SECRETARIAS"]
-)
 
-df_secretaria_valor = (
-    df_filtro[
-        [
-        "NOTA_DE_EMPENHO_CREDITO",
-        "SECRETARIA_DE_LOTACAO",
-        "TIPO_DE_ACAO",
-        "MES_EMPENHO_SIGLA",      # Incluído aqui para herança voluntária
-        "MES_PAGAMENTO_SIGLA"     # Incluído aqui para herança voluntária
-        ]
-    ]
-    .drop_duplicates()
-    .merge(
-        df_financeiro[
-            [
-            "NOTA_DE_EMPENHO_CREDITO",
-            "VALOR_RATEADO"
-            ]
-        ],
-        on="NOTA_DE_EMPENHO_CREDITO",
-        how="left"
-    )
-)
+df_filtro = df_base.copy()
+if ano:
+    df_filtro = df_filtro[df_filtro["ANO_PDP"].isin(ano)]
+if secretaria:
+    df_filtro = df_filtro[df_filtro["SECRETARIA_DE_LOTACAO"].isin(secretaria)]
+if modalidade:
+    df_filtro = df_filtro[df_filtro["MODALIDADE"].isin(modalidade)]
+
+
+df_financeiro = df_financeiro_global.copy()
+if ano:
+    df_financeiro = df_financeiro[df_financeiro["ANO_PDP"].isin(ano)]
+if secretaria:
+    df_financeiro = df_financeiro[df_financeiro["SECRETARIA_DE_LOTACAO"].isin(secretaria)]
+if modalidade:
+    df_financeiro = df_financeiro[df_financeiro["MODALIDADE"].isin(modalidade)]
 
 
 df_carga = (
@@ -233,7 +220,7 @@ df_carga = (
         ]
     )
 )
-
+    
 # =====================================================
 # KPIs
 # =====================================================
@@ -311,7 +298,7 @@ with col1:
         .reset_index()
     )
 
-    total = dados["SIAPE"].sum()
+    total = total_participantes
 
     fig = px.pie(
         dados,
@@ -338,9 +325,9 @@ with col1:
         .reset_index()
     )
 
-    total = df_financeiro["VALOR_EMPENHADO"].sum()   # número
+    total = df_financeiro["VALOR_EMPENHADO"].sum()   
 
-    total_formatado = formatar_valor_empenhado(total)  # texto
+    total_formatado = formatar_valor_empenhado(total)  
 
     fig = px.pie(
         dados,
@@ -404,20 +391,20 @@ with col2:
     )
     else:
         df_secretaria = (
-            df_secretaria_valor
-            .groupby("SECRETARIA_DE_LOTACAO")["VALOR_RATEADO"]
+            df_financeiro
+            .groupby("SECRETARIA_DE_LOTACAO")["VALOR_EMPENHADO"]
             .sum()
             .reset_index()
-            .sort_values("VALOR_RATEADO")
+            .sort_values("VALOR_EMPENHADO")
             )
 
         fig = px.bar(
             df_secretaria,
-            x="VALOR_RATEADO",
+            x="VALOR_EMPENHADO",
             y="SECRETARIA_DE_LOTACAO",
             orientation="h",
             text_auto=".2s",
-            color="VALOR_RATEADO",
+            color="VALOR_EMPENHADO",
             color_continuous_scale="Greens"
             )
 
@@ -606,8 +593,8 @@ with col1:
     if indicador_tipo == "Valor Empenhado por Tipo de Ação":
 
         dados = pd.pivot_table(
-            df_secretaria_valor,
-            values="VALOR_RATEADO",
+            df_financeiro,
+            values="VALOR_EMPENHADO",
             index="SECRETARIA_DE_LOTACAO",
             columns="TIPO_DE_ACAO",
             aggfunc="mean"
@@ -693,13 +680,13 @@ with col2:
     st.subheader("Evolução Mensal dos Valores")
 
     empenho = (
-        df_secretaria_valor.groupby("MES_EMPENHO_SIGLA")["VALOR_RATEADO"]
+        df_financeiro.groupby("MES_EMPENHO_SIGLA")["VALOR_EMPENHADO"]
         .sum()
         .reindex(ordem_meses, fill_value=0)
     )
 
     pagamento = (
-        df_secretaria_valor.groupby("MES_PAGAMENTO_SIGLA")["VALOR_RATEADO"]
+        df_financeiro.groupby("MES_PAGAMENTO_SIGLA")["VALOR_EMPENHADO"]
         .sum()
         .reindex(ordem_meses, fill_value=0)
     )   
@@ -758,9 +745,9 @@ tabela_resumo = (
 )
 
 valor_secretaria = (
-    df_secretaria_valor
+    df_financeiro
     .groupby("SECRETARIA_DE_LOTACAO")
-    ["VALOR_RATEADO"]
+    ["VALOR_EMPENHADO"]
     .sum()
     .reset_index(name="Valor_Empenhado")
 )
@@ -773,50 +760,41 @@ valor_carga = (
     .reset_index(name="Carga_Horaria_Media")
 )
 
+tabela_resumo = tabela_resumo.merge(valor_secretaria, on="SECRETARIA_DE_LOTACAO", how="left")
+tabela_resumo = tabela_resumo.merge(valor_carga, on="SECRETARIA_DE_LOTACAO", how="left")
 
-tabela_resumo = tabela_resumo.merge(
-    valor_secretaria,
-    on="SECRETARIA_DE_LOTACAO",
-    how="left"
+tabela_resumo = tabela_resumo.fillna(0)
+
+tabela_resumo = tabela_resumo[tabela_resumo["Valor_Empenhado"] > 0]
+
+
+tabela_resumo["Valor_Por_Participante"] = np.where(
+    tabela_resumo["Participantes"] > 0,
+    tabela_resumo["Valor_Empenhado"] / tabela_resumo["Participantes"],
+    0
 )
-
-tabela_resumo = tabela_resumo.merge(
-    valor_carga,
-    on="SECRETARIA_DE_LOTACAO",
-    how="left"
-)
-
-
-tabela_resumo["Valor_Por_Participante"] = (
-    tabela_resumo["Valor_Empenhado"] /
-    tabela_resumo["Participantes"]
-)
-
 
 tabela_exibicao = tabela_resumo.copy()
 
+tabela_exibicao["Valor_Aluno"] = (
+    tabela_exibicao["Valor_Aluno"]
+    .map(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+)
 
 tabela_exibicao["Valor_Empenhado"] = (
     tabela_exibicao["Valor_Empenhado"]
-    .map(lambda x: f"R$ {x:.2f}")
-)
-
-tabela_exibicao["Valor_Aluno"] = (
-    tabela_exibicao["Valor_Aluno"]
-    .map(lambda x: f"R$ {x:.2f}")
+    .map(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 )
 
 tabela_exibicao["Valor_Por_Participante"] = (
     tabela_exibicao["Valor_Por_Participante"]
-    .map(lambda x: f"R$ {x:.2f}")
+    .map(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 )
-
 
 tabela_exibicao["Carga_Horaria_Media"] = (
     tabela_exibicao["Carga_Horaria_Media"]
     .round(1)
 )
-
 
 st.subheader("📋 Indicadores por Secretaria")
 
