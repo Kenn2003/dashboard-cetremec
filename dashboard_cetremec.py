@@ -225,7 +225,7 @@ df_carga = (
 # KPIs
 # =====================================================
 
-total_acoes = df_filtro["ACAO_DE_DESENVOLVIMENTO"].count()
+total_acoes = df_filtro["ACAO_DE_DESENVOLVIMENTO"].drop_duplicates().count()
 
 total_participantes = df_filtro["ID"].nunique()
 
