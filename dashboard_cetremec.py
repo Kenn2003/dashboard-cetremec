@@ -227,7 +227,7 @@ df_carga = (
 
 total_acoes = df_filtro["ACAO_DE_DESENVOLVIMENTO"].count()
 
-total_participantes = df_filtro["SIAPE"].nunique()
+total_participantes = df_filtro["ID"].nunique()
 
 valor_total = df_financeiro["VALOR_EMPENHADO"].sum()
 
@@ -293,7 +293,7 @@ with col1:
 
     dados = (
         df_filtro
-        .groupby("MODALIDADE")["SIAPE"]
+        .groupby("MODALIDADE")["ID"]
         .nunique()
         .reset_index()
     )
@@ -303,7 +303,7 @@ with col1:
     fig = px.pie(
         dados,
         names="MODALIDADE",
-        values="SIAPE",
+        values="ID",
         hole=0.70,
         title="Participantes por Modalidade"
     )
@@ -374,7 +374,7 @@ with col2:
 
         df_secretaria = (
             df_filtro
-            .groupby("SECRETARIA_DE_LOTACAO")["SIAPE"]
+            .groupby("SECRETARIA_DE_LOTACAO")["ID"]
             .nunique()
             .reset_index(name="Participantes")
             .sort_values("Participantes")
@@ -586,7 +586,8 @@ with col1:
         [
             "Valor Empenhado por Tipo de Ação",
             "Participantes por Tipo de Ação",
-            "Carga Horária por Tipo de Ação"
+            "Carga Horária por Tipo de Ação",
+            "Custo por Aluno por Tipo de Ação"
         ],
         horizontal=True
     )
@@ -622,7 +623,7 @@ with col1:
     elif indicador_tipo == "Participantes por Tipo de Ação":
         dados = pd.pivot_table(
             df_filtro,
-            values="SIAPE",
+            values="ID",
             index="SECRETARIA_DE_LOTACAO",
             columns="TIPO_DE_ACAO",
             aggfunc="nunique"
@@ -669,6 +670,37 @@ with col1:
             height=450,
             margin=dict(l=10, r=10, t=30, b=10)
             )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={"scrollZoom": False}
+            )
+        
+    elif indicador_tipo == "Custo por Aluno por Tipo de Ação":
+
+        dados = pd.pivot_table(
+            df_carga,
+            values="VALOR_PAGO_POR_ALUNO",
+            index="SECRETARIA_DE_LOTACAO",
+            columns="TIPO_DE_ACAO",
+            aggfunc="mean"
+            ).fillna(0)
+
+        fig = px.bar(
+            dados.reset_index(),
+            y="SECRETARIA_DE_LOTACAO",
+            x=dados.columns,
+            orientation="h",
+            title="Valor Médio por Aluno por Tipo de Ação e Secretaria"
+            )
+
+        fig.update_layout(
+            height=450,
+            margin=dict(l=10, r=10, t=30, b=10)
+            )
+
+        fig.update_xaxes(title="R$/Aluno")
 
         st.plotly_chart(
             fig,
@@ -737,7 +769,7 @@ tabela_resumo = (
     df_filtro
     .groupby("SECRETARIA_DE_LOTACAO")
     .agg(
-        Participantes=("SIAPE", "nunique"),
+        Participantes=("ID", "nunique"),
         Acoes=("ACAO_DE_DESENVOLVIMENTO", "nunique"),
         Valor_Aluno=("VALOR_PAGO_POR_ALUNO", "mean"),
     )
